@@ -178,3 +178,84 @@ $3 = (*mut prettytable::row::Row) 0x555555619ba0
 (gdb) p r.len()
 $4 = 184683593789
 (gdb) n
+
+
+
+
+
+moving some code over from prettytable, I modify the repro, and looks like the result is a hacky transmute:
+
+ubuntu@rust-test:~/test-rustc-1.65-1.67-segv$ gdb ./target/debug/test-table 
+GNU gdb (Ubuntu 9.2-0ubuntu1~20.04.1) 9.2
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ./target/debug/test-table...
+warning: Missing auto-load script at offset 0 in section .debug_gdb_scripts
+of file /home/ubuntu/test-rustc-1.65-1.67-segv/target/debug/test-table.
+Use `info auto-load python-scripts [REGEXP]' to list them.
+(gdb) b check_result
+Breakpoint 1 at 0xa21e: file src/main.rs, line 105.
+(gdb) r
+Starting program: /home/ubuntu/test-rustc-1.65-1.67-segv/target/debug/test-table 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, test_table::check_result (t1=0x7fffffffe258, t2=0x7fffffffe258) at src/main.rs:105
+warning: Source file is more recent than executable.
+105	}
+(gdb) p t1
+$1 = (*mut test_table::Table) 0x7fffffffe258
+(gdb) p *t1
+$2 = test_table::Table {format: 0x5555555b2ba0, titles: 0x5555555b2ad0, rows: alloc::vec::Vec<prettytable::row::Row, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<prettytable::row::Row, alloc::alloc::Global> {ptr: core::ptr::unique::Unique<prettytable::row::Row> {pointer: core::ptr::non_null::NonNull<prettytable::row::Row> {pointer: 0x8}, _marker: core::marker::PhantomData<prettytable::row::Row>}, cap: 0, alloc: alloc::alloc::Global}, len: 0}}
+(gdb) p t2
+$3 = (*mut test_table::TableSlice) 0x7fffffffe258
+(gdb) p *t2
+$4 = test_table::TableSlice {format: 0x0, titles: 0x8, rows: &[prettytable::row::Row] {data_ptr: 0x5555555b2ba0, length: 93824992619216}}
+(gdb) 
+
+
+
+impl<'a> AsRef<TableSlice<'a>> for Table {
+    fn as_ref(&self) -> &TableSlice<'a> {
+        unsafe {
+            // All this is a bit hacky. Let's try to find something else
+            let s = &mut *((self as *const Table) as *mut Table);
+            s.rows.shrink_to_fit();
+            transmute(self)
+        }
+    }
+}
+
+The struct definitions:
+
+
+#[derive(Clone, Debug)]
+pub struct Table {
+    format: Box<TableFormat>,
+    titles: Box<Option<Row>>,
+    rows: Vec<Row>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TableSlice<'a> {
+    format: &'a TableFormat,
+    titles: &'a Option<Row>,
+    rows: &'a [Row],
+}
+
+
+So the problem is due to transmuting the Vec<Row> into &'a [Row], it seems...
+
+
