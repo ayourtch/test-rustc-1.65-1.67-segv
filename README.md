@@ -313,4 +313,45 @@ For more information about this error, try `rustc --explain E0512`.
 warning: `test-table` (bin "test-table") generated 2 warnings
 error: could not compile `test-table` due to previous error; 2 warnings emitted
 
-ahha. Let's try to downgrade the compiler...
+ahha. Let's try to downgrade the compiler... This still does not compile. so maybe false path...
+
+Let's try to rearrange the fields - move the rows one field up, in both structures...
+
+ubuntu@rust-test:~/test-rustc-1.65-1.67-segv$ gdb ./target/debug/test-table 
+GNU gdb (Ubuntu 9.2-0ubuntu1~20.04.1) 9.2
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ./target/debug/test-table...
+warning: Missing auto-load script at offset 0 in section .debug_gdb_scripts
+of file /home/ubuntu/test-rustc-1.65-1.67-segv/target/debug/test-table.
+Use `info auto-load python-scripts [REGEXP]' to list them.
+(gdb) b check_result
+Breakpoint 1 at 0xa40e: file src/main.rs, line 101.
+(gdb) r
+Starting program: /home/ubuntu/test-rustc-1.65-1.67-segv/target/debug/test-table 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, test_table::check_result (t1=0x7fffffffe258, t2=0x7fffffffe258) at src/main.rs:101
+101	    println!("debug here");
+(gdb) p *t1
+$1 = test_table::Table {format: 0x5555555b3ba0, rows: alloc::vec::Vec<prettytable::row::Row, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<prettytable::row::Row, alloc::alloc::Global> {ptr: core::ptr::unique::Unique<prettytable::row::Row> {pointer: core::ptr::non_null::NonNull<prettytable::row::Row> {pointer: 0x8}, _marker: core::marker::PhantomData<prettytable::row::Row>}, cap: 0, alloc: alloc::alloc::Global}, len: 0}, titles: 0x5555555b3ad0}
+(gdb) p *t2
+$2 = test_table::TableSlice {format: 0x8, rows: &[prettytable::row::Row] {data_ptr: 0x5555555b3ba0, length: 0}, titles: 0x0}
+(gdb) 
+
+So, with a slight change of the layout of the structure, the code starts to work in 1.67 as well...
+
+

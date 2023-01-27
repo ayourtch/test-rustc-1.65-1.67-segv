@@ -10,15 +10,15 @@ use std::mem::transmute;
 #[derive(Clone, Debug)]
 pub struct Table {
     format: Box<TableFormat>,
-    titles: Box<Row>,
     rows: Vec<Row>,
+    titles: Box<Row>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TableSlice<'a> {
     format: &'a TableFormat,
-    titles: &'a Row,
     rows: &'a [Row],
+    titles: &'a Row,
 }
 
 impl<'a> TableSlice<'a> {
