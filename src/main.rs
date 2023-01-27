@@ -104,6 +104,14 @@ fn check_result<'a>(t1: &Table, t2: &TableSlice<'a>) {
     println!("debug here");
 }
 
+fn xmute_vec<'a>(v: &Vec<Row>) -> &'a [Row] {
+        unsafe {
+            // All this is a bit hacky. Let's try to find something else
+            v.shrink_to_fit();
+            transmute(v)
+        }
+}
+
 fn main() {
     let mut table = Table::new();
 
@@ -130,6 +138,11 @@ fn main() {
 
     let table_ref = table.as_ref();
     check_result(&table, table_ref);
+
+    let managed_vec: Vec<Row> = vec![];
+    let ref_array = xmute_vec(&managed_vec);
+    
+    println!("ref len: {}", ref_array.len());
 
     table_ref.printstd();
 }

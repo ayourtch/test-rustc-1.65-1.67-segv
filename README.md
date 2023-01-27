@@ -259,3 +259,58 @@ pub struct TableSlice<'a> {
 So the problem is due to transmuting the Vec<Row> into &'a [Row], it seems...
 
 
+ubuntu@rust-test:~/test-rustc-1.65-1.67-segv$ vi src/main.rs 
+
+Let's try to transmute directly:
+
++fn xmute_vec<'a>(v: &Vec<Row>) -> &'a [Row] {
++        unsafe {
++            // All this is a bit hacky. Let's try to find something else
++            v.shrink_to_fit();
++            transmute(v)
++        }
++}
++
+ fn main() {
+     let mut table = Table::new();
+ 
+@@ -131,5 +139,10 @@ fn main() {
+     let table_ref = table.as_ref();
+     check_result(&table, table_ref);
+ 
++    let managed_vec: Vec<Row> = vec![];
++    let ref_array = xmute_vec(&managed_vec);
++    
++    println!("ref len: {}", ref_array.len());
++
+
+ubuntu@rust-test:~/test-rustc-1.65-1.67-segv$ cargo run
+   Compiling test-table v0.1.0 (/home/ubuntu/test-rustc-1.65-1.67-segv)
+warning: unused `#[macro_use]` import
+ --> src/main.rs:1:1
+  |
+1 | #[macro_use]
+  | ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `Error`, `Write`, `self`
+ --> src/main.rs:6:15
+  |
+6 | use std::io::{self, Error, Write};
+  |               ^^^^  ^^^^^  ^^^^^
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+   --> src/main.rs:111:13
+    |
+111 |             transmute(v)
+    |             ^^^^^^^^^
+    |
+    = note: source type: `&Vec<Row>` (64 bits)
+    = note: target type: `&[Row]` (128 bits)
+
+For more information about this error, try `rustc --explain E0512`.
+warning: `test-table` (bin "test-table") generated 2 warnings
+error: could not compile `test-table` due to previous error; 2 warnings emitted
+
+ahha. Let's try to downgrade the compiler...
