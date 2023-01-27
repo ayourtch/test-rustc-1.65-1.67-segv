@@ -1,5 +1,8 @@
 This repository demonstrates a regression during upgrade rustc 1.65 -> 1.67
 
+UPDATE: I tested with 1.66.1 and the issue is not seen there.
+The segv is present on arm and x86 targets.
+
 ```
 
 $ rustup show
