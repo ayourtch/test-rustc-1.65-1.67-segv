@@ -10,14 +10,14 @@ use std::mem::transmute;
 #[derive(Clone, Debug)]
 pub struct Table {
     format: Box<TableFormat>,
-    titles: Box<Option<Row>>,
+    titles: Box<Row>,
     rows: Vec<Row>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TableSlice<'a> {
     format: &'a TableFormat,
-    titles: &'a Option<Row>,
+    titles: &'a Row,
     rows: &'a [Row],
 }
 
@@ -40,10 +40,7 @@ impl<'a> TableSlice<'a> {
     }
 
     fn get_column_width(&self, col_idx: usize) -> usize {
-        let mut width = match *self.titles {
-            Some(ref t) => t.get_cell_width(col_idx),
-            None => 0,
-        };
+        let mut width = 0;
         for r in self.rows {
             let l = r.get_cell_width(col_idx);
             if l > width {
@@ -94,7 +91,7 @@ impl Table {
     pub fn init(rows: Vec<Row>) -> Table {
         Table {
             rows: rows,
-            titles: Box::new(None),
+            titles: Box::new(Row::new(vec![])),
             format: Box::new(*prettytable::format::consts::FORMAT_DEFAULT),
         }
     }
@@ -102,14 +99,6 @@ impl Table {
 
 fn check_result<'a>(t1: &Table, t2: &TableSlice<'a>) {
     println!("debug here");
-}
-
-fn xmute_vec<'a>(v: &Vec<Row>) -> &'a [Row] {
-        unsafe {
-            // All this is a bit hacky. Let's try to find something else
-            v.shrink_to_fit();
-            transmute(v)
-        }
 }
 
 fn main() {
@@ -138,11 +127,6 @@ fn main() {
 
     let table_ref = table.as_ref();
     check_result(&table, table_ref);
-
-    let managed_vec: Vec<Row> = vec![];
-    let ref_array = xmute_vec(&managed_vec);
-    
-    println!("ref len: {}", ref_array.len());
 
     table_ref.printstd();
 }
