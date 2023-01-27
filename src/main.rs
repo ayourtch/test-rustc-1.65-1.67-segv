@@ -7,6 +7,7 @@ fn main() {
 
     let mut table = Table::new();
 
+/*
     table.set_titles(row![
         "ServiceID",
         "ServiceName",
@@ -16,7 +17,6 @@ fn main() {
         "Unlocked #",
         "Inconsistent"
     ]);
-
     table.add_row(row![
         1,
         format!("Service #{}", 1),
@@ -26,5 +26,6 @@ fn main() {
         9999,
         ""
     ]);
+    */
     table.printstd();
 }
